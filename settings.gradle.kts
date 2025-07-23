@@ -15,6 +15,7 @@ pluginManagement {
         google()
         mavenCentral()
         maven(url = "https://www.jitpack.io")
+        maven(url = "https://artifacts.unidata.ucar.edu/repository/unidata-all/")
     }
 }
 
@@ -24,6 +25,7 @@ dependencyResolutionManagement {
         mavenCentral()
         google()
         maven(url = "https://www.jitpack.io")
+        maven(url = "https://artifacts.unidata.ucar.edu/repository/unidata-all/")
     }
 }
 

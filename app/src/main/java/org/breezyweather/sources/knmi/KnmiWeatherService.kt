@@ -13,6 +13,8 @@ import org.breezyweather.common.source.HttpSource
 import org.breezyweather.common.source.WeatherSource
 import org.breezyweather.sources.brightsky.BrightSkyApi
 import retrofit2.Retrofit
+import ucar.nc2.NetcdfFile
+import ucar.nc2.NetcdfFiles
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Named
@@ -56,6 +58,7 @@ class KnmiWeatherService @Inject constructor(
          * 2. Get the location closest to the coordinates
          * 3. Get the 10 minute interval forecast for that location
          */
+        val ncFile: NetcdfFile = NetcdfFiles.open("")
 
         mApi.getLocations(KNMI_API_KEY, LocalDateTime.now()) // TODO replace with valid datetime for android 5
 

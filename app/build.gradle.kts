@@ -358,6 +358,10 @@ dependencies {
     // Allows reflection of the relative time class to pass Locale as parameter
     implementation(libs.restrictionBypass)
 
+    // netcdf https://github.com/Unidata/netcdf-java/tree/v5.8.0
+    implementation(libs.netcdf.cdm.core)
+    implementation(libs.netcdf.netcdf4)
+
     // debugImplementation because LeakCanary should only run in debug builds.
     // debugImplementation(libs.leakcanary)
 }
