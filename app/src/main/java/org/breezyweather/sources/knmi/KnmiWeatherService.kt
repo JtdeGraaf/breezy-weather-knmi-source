@@ -54,13 +54,15 @@ class KnmiWeatherService @Inject constructor(
         requestedFeatures: List<SourceFeature>,
     ): Observable<WeatherWrapper> {
         /** Step by step plan:
-         * 1. Retrieve all available locations
-         * 2. Get the location closest to the coordinates
-         * 3. Get the 10 minute interval forecast for that location
+         * 1. Retrieve latest dataset file name
+         * 2. Retrieve file download url
+         * 3. Download file and store in memory
+         * 4. Parse file with ucar library
+         * 5. Profit?
          */
         val ncFile: NetcdfFile = NetcdfFiles.open("")
 
-        mApi.getLocations(KNMI_API_KEY, LocalDateTime.now()) // TODO replace with valid datetime for android 5
+        //mApi.getLocations(KNMI_API_KEY, LocalDateTime.now()) // TODO replace with valid datetime for android 5
 
 
         TODO("Not yet implemented")
@@ -68,7 +70,8 @@ class KnmiWeatherService @Inject constructor(
 
     companion object {
         private const val KNMI_BASE_URL = "https://api.dataplatform.knmi.nl"
-        private const val KNMI_API_KEY = ""
+        // Api key is publicly distributed by KNMI, so it is not secret. Expires on the first of July 2026
+        private const val KNMI_API_KEY = "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6ImVlNDFjMWI0MjlkODQ2MThiNWI4ZDViZDAyMTM2YTM3IiwiaCI6Im11cm11cjEyOCJ9"
     }
 
 }

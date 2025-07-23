@@ -1,19 +1,30 @@
 package org.breezyweather.sources.knmi
 
 import io.reactivex.rxjava3.core.Observable
-import org.breezyweather.sources.knmi.json.KnmiLocation
-import org.breezyweather.sources.pirateweather.json.PirateWeatherForecastResult
+import org.breezyweather.sources.knmi.json.KnmiDataset
+
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Path
 import retrofit2.http.Query
 import java.time.LocalDateTime
 
+// https://tyk-cdn.dataplatform.knmi.nl/open-data/index.html
 interface KnmiApi {
 
-    @GET("/edr/v1/collections/10-minute-in-situ-meteorological-observations/locations")
-    fun getLocations(
+    @GET("/open-data/v1/datasets/Actuele10mindataKNMIstations/versions/2/files")
+    fun getTenMinuteIntervalDatasets(
         @Header("Authorization") apiKey: String,
-        @Query("datetime") datetime: LocalDateTime,
-    ): Observable<List<KnmiLocation>>
+        @Query("maxKeys") maxKeys: Long, // Maximum of 1000
+        @Query("sorting") sorting: String, // 'asc', 'desc'
+        @Query("orderBy") orderBy: String, // 'filename', 'lastModified', 'created'
+        @Query("begin") begin: LocalDateTime,
+        @Query("end") end: LocalDateTime,
+    ): Observable<KnmiDataset>
+
+    @GET("/open-data/v1/datasets/Actuele10mindataKNMIstations/versions/2/files/{filename}/url")
+    fun getTempDownloadUrlForFile(
+        @Header("Authorization") apiKey: String,
+        @Path("filename") filename: String,
+    )
 }
