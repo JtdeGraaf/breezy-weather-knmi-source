@@ -11,15 +11,13 @@ import io.reactivex.rxjava3.core.Observable
 
 import org.breezyweather.common.source.HttpSource
 import org.breezyweather.common.source.WeatherSource
-import org.breezyweather.sources.brightsky.BrightSkyApi
 import retrofit2.Retrofit
-import ucar.nc2.NetcdfFile
 import ucar.nc2.NetcdfFiles
-import java.time.LocalDateTime
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Named
 
-class KnmiWeatherService @Inject constructor(
+class KnmiService @Inject constructor(
     @ApplicationContext context: Context,
     @Named("JsonClient") client: Retrofit.Builder,
 ) : HttpSource(), WeatherSource{
@@ -60,12 +58,16 @@ class KnmiWeatherService @Inject constructor(
          * 4. Parse file with ucar library
          * 5. Profit?
          */
-        val ncFile: NetcdfFile = NetcdfFiles.open("")
+        //val ncFile: NetcdfFile = NetcdfFiles.open("")
 
-        //mApi.getLocations(KNMI_API_KEY, LocalDateTime.now()) // TODO replace with valid datetime for android 5
+        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY, 1, "desc", null, null, null).blockingFirst()
+        val latestFileMetadata = dataset.files[0]
+        val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, latestFileMetadata.filename).blockingFirst()
+        val fileBytes = URL(fileDownloadUrl.temporaryDownloadUrl).readBytes()
+        val ncFile = NetcdfFiles.openInMemory(latestFileMetadata.filename, fileBytes)
+        // TODO:  Now how in the fuck do I parse this file
+        return Observable.just(WeatherWrapper())
 
-
-        TODO("Not yet implemented")
     }
 
     companion object {
