@@ -205,7 +205,8 @@ android {
                 "META-INF/LICENSE.txt",
                 "META-INF/README.md",
                 "META-INF/NOTICE",
-                "META-INF/*.kotlin_module"
+                "META-INF/*.kotlin_module",
+                "META-INF/third-party-licenses/**"
             )
         )
     }
@@ -361,6 +362,8 @@ dependencies {
     // netcdf https://github.com/Unidata/netcdf-java/tree/v5.8.0
     implementation(libs.netcdf.cdm.core)
     implementation(libs.netcdf.netcdf4)
+
+    implementation("com.google.guava:guava:33.4.8-android")
 
     // debugImplementation because LeakCanary should only run in debug builds.
     // debugImplementation(libs.leakcanary)

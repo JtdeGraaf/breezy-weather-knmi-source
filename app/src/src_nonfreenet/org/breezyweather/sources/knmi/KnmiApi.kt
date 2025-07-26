@@ -14,19 +14,23 @@ import java.time.ZonedDateTime
 // https://tyk-cdn.dataplatform.knmi.nl/open-data/index.html
 interface KnmiApi {
 
-    @GET("/open-data/v1/datasets/Actuele10mindataKNMIstations/versions/2/files")
+    @GET("/open-data/v1/datasets/{datasetName}/versions/{version}/files")
     fun getTenMinuteIntervalDatasets(
         @Header("Authorization") apiKey: String,
-        @Query("maxKeys") maxKeys: Long?, // Maximum of 1000
-        @Query("sorting") sorting: String?, // 'asc', 'desc'
-        @Query("orderBy") orderBy: String?, // 'filename', 'lastModified', 'created'
+        @Path("datasetName") datasetName: String,
+        @Path("version") version: String,
+        @Query("maxKeys") maxKeys: Long, // Maximum of 1000
+        @Query("sorting") sorting: String, // 'asc', 'desc'
+        @Query("orderBy") orderBy: String, // 'filename', 'lastModified', 'created'
         @Query("begin") begin: ZonedDateTime?,
         @Query("end") end: ZonedDateTime?,
     ): Observable<KnmiDataset>
 
-    @GET("/open-data/v1/datasets/Actuele10mindataKNMIstations/versions/2/files/{filename}/url")
+    @GET("/open-data/v1/datasets/{datasetName}/versions/{version}/files/{filename}/url")
     fun getTempDownloadUrlForFile(
         @Header("Authorization") apiKey: String,
+        @Path("datasetName") datasetName: String,
+        @Path("version") version: String,
         @Path("filename") filename: String,
     ): Observable<KnmiTempFileDownloadUrl>
 }

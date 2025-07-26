@@ -63,17 +63,18 @@ class KnmiService @Inject constructor(
          */
         //val ncFile: NetcdfFile = NetcdfFiles.open("")
 
-        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY, 1, "desc", null, null, null).blockingFirst()
-        val latestFileMetadata = dataset.files[0]
-        val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, latestFileMetadata.filename).blockingFirst()
+        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, 18, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
+        val tempForecastDataset = dataset.files.filter { it.filename.contains("uwcw_ha43_nl_2km_air-temperature-hagl") }.first()
+
+        val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version , tempForecastDataset.filename).blockingFirst()
         val fileBytes = URL(fileDownloadUrl.temporaryDownloadUrl).readBytes()
-        val ncFile = NetcdfFiles.openInMemory(latestFileMetadata.filename, fileBytes)
+        val ncFile = NetcdfFiles.openInMemory(tempForecastDataset.filename, fileBytes)
         println("================ VARIABLES BELOW ================")
         println(ncFile.variables)
         println("================ GLOBAL ATTRIBUTES BELOW ================")
         print(ncFile.globalAttributes)
 
-        return Observable.just(WeatherWrapper(hourlyForecast = parseKnmiDataToHourlyWrappers(ncFile, location)))
+        return Observable.just(WeatherWrapper(hourlyForecast = parseKnmiTemperatureForecast(ncFile, location)))
 
     }
 
