@@ -8,6 +8,6 @@ data class KnmiDataset(
     val resultCount: Long,
     val files: List<KnmiFile>,
     val maxResults: Long,
-    val startAfterFileName: String,
+    val startAfterFilename: String,
     val nextPageToken: String,
 )

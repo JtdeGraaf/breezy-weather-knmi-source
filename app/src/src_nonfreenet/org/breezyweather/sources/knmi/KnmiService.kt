@@ -17,6 +17,9 @@ import java.net.URL
 import javax.inject.Inject
 import javax.inject.Named
 
+/*
+    Koninklijk Nederlands Meteorologisch Instituut
+ */
 class KnmiService @Inject constructor(
     @ApplicationContext context: Context,
     @Named("JsonClient") client: Retrofit.Builder,
@@ -65,8 +68,12 @@ class KnmiService @Inject constructor(
         val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, latestFileMetadata.filename).blockingFirst()
         val fileBytes = URL(fileDownloadUrl.temporaryDownloadUrl).readBytes()
         val ncFile = NetcdfFiles.openInMemory(latestFileMetadata.filename, fileBytes)
-        // TODO:  Now how in the fuck do I parse this file
-        return Observable.just(WeatherWrapper())
+        println("================ VARIABLES BELOW ================")
+        println(ncFile.variables)
+        println("================ GLOBAL ATTRIBUTES BELOW ================")
+        print(ncFile.globalAttributes)
+
+        return Observable.just(WeatherWrapper(hourlyForecast = parseKnmiDataToHourlyWrappers(ncFile, location)))
 
     }
 
