@@ -121,17 +121,18 @@ fun NetcdfFile.readGridDataAtPoint(
                 val fixedIndex = fixedDimensionIndices[dim.shortName]
                 if (fixedIndex != null) {
                     origin[idx] = fixedIndex
-                } else {
-                    // This dimension is not one we are iterating or fixing,
-                    // if its length is > 1, this read will be problematic
-                    // For now, assume if not specified, it's length 1 or should be handled
-                    if (dim.length > 1) {
-                        Log.w(TAG, "Unhandled dimension ${dim.shortName} with length ${dim.length} in variable $varName. Attempting to use index 0.")
-                        origin[idx] = 0 // Default to 0 if not specified and length > 1 (could be risky)
-                    } else {
-                        origin[idx] = 0 // If length is 1, index 0 is fine
-                    }
+                    continue
                 }
+                // This dimension is not one we are iterating or fixing,
+                // if its length is > 1, this read will be problematic
+                // For now, assume if not specified, it's length 1 or should be handled
+                if (dim.length > 1) {
+                    Log.w(TAG, "Unhandled dimension ${dim.shortName} with length ${dim.length} in variable $varName. Attempting to use index 0.")
+                    origin[idx] = 0 // Default to 0 if not specified and length > 1 (could be risky)
+                } else {
+                    origin[idx] = 0 // If length is 1, index 0 is fine
+                }
+
             }
         }
     }

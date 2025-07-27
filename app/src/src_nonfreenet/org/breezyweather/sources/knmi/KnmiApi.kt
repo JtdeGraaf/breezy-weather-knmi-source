@@ -19,7 +19,7 @@ interface KnmiApi {
         @Header("Authorization") apiKey: String,
         @Path("datasetName") datasetName: String,
         @Path("version") version: String,
-        @Query("maxKeys") maxKeys: Long, // Maximum of 1000
+        @Query("maxKeys") maxKeys: Int, // Maximum of 1000
         @Query("sorting") sorting: String, // 'asc', 'desc'
         @Query("orderBy") orderBy: String, // 'filename', 'lastModified', 'created'
         @Query("begin") begin: ZonedDateTime?,

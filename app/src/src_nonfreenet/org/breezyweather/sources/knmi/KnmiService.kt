@@ -11,6 +11,8 @@ import io.reactivex.rxjava3.core.Observable
 
 import org.breezyweather.common.source.HttpSource
 import org.breezyweather.common.source.WeatherSource
+import org.breezyweather.sources.knmi.datasets.KnmiDatasets
+import org.breezyweather.sources.knmi.datasets.harmoniecy43meteorologicalaviationforecastparameters.KnmiHarmonieCy43ForecastFiles
 import retrofit2.Retrofit
 import ucar.nc2.NetcdfFiles
 import java.net.URL
@@ -63,8 +65,8 @@ class KnmiService @Inject constructor(
          */
         //val ncFile: NetcdfFile = NetcdfFiles.open("")
 
-        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, 18, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
-        val tempForecastDataset = dataset.files.filter { it.filename.contains("uwcw_ha43_nl_2km_air-temperature-hagl") }.first()
+        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.amountOfFiles, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
+        val tempForecastDataset = dataset.files.filter { it.filename.contains(KnmiHarmonieCy43ForecastFiles.AIR_TEMPERATURE_HAGL.filename) }.first()
 
         val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version , tempForecastDataset.filename).blockingFirst()
         val fileBytes = URL(fileDownloadUrl.temporaryDownloadUrl).readBytes()
