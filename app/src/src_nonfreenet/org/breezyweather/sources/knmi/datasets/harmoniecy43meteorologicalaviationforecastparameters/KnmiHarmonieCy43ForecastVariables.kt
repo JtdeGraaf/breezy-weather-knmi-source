@@ -57,25 +57,4 @@ enum class KnmiHarmonieCy43ForecastVariables(
         unitDescription = "seconds since 1970-01-01T00:00:00+00:00",
         dataType = DataType.LONG
     );
-
-    companion object {
-        /**
-         * Finds a [KnmiHarmonieCy43ForecastVariables] enum constant by its [variableName].
-         *
-         * @param variableName The name of the variable to find.
-         * @return The corresponding [KnmiHarmonieCy43ForecastVariables] constant, or null if not found.
-         */
-        fun fromVariableName(variableName: String): KnmiHarmonieCy43ForecastVariables? {
-            return entries.find { it.variableName == variableName }
-        }
-
-        /**
-         * Finds a [KnmiHarmonieCy43ForecastVariables] enum constant by its [short_name] if available in the original metadata,
-         * otherwise falls back to [variableName].
-         * This is a placeholder as short_name mapping is not explicitly implemented here yet based on the provided snippet.
-         *
-         * @param shortOrVariableName The short name or variable name to find.
-         * @return The corresponding [KnmiHarmonieCy43ForecastVariables] constant, or null if not found.
-         */
-        fun fromShortOrVariableName(shortOrVariableName: String): KnmiHarmonieCy43ForecastVariables? = fromVariableName(shortOrVariableName)    }
 }

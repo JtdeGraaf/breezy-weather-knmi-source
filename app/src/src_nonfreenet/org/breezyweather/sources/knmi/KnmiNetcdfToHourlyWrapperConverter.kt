@@ -1,271 +1,133 @@
 package org.breezyweather.sources.knmi
 
-import android.util.Log
-import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.autofill.dataType
 import breezyweather.domain.location.model.Location
 import breezyweather.domain.weather.model.Temperature
 import breezyweather.domain.weather.wrappers.HourlyWrapper
-// Import other models like Precipitation, Wind, etc., as you build parsers for them
+import org.breezyweather.sources.knmi.KnmiService.Companion.KNMI_API_KEY
+import org.breezyweather.sources.knmi.datasets.KnmiDatasets
+import org.breezyweather.sources.knmi.datasets.harmoniecy43meteorologicalaviationforecastparameters.KnmiHarmonieCy43ForecastFiles
+import org.breezyweather.sources.knmi.datasets.harmoniecy43meteorologicalaviationforecastparameters.KnmiHarmonieCy43ForecastVariables
+import org.breezyweather.sources.knmi.json.KnmiDataset
 import ucar.ma2.Array
-import ucar.ma2.DataType
-import ucar.ma2.Index
 import ucar.nc2.NetcdfFile
+import ucar.nc2.NetcdfFiles
 import ucar.nc2.Variable
 import ucar.nc2.time.CalendarDate
 import ucar.nc2.time.CalendarDateUnit
+import java.net.URL
 import java.util.Date
 import kotlin.math.abs
-import kotlin.math.pow
-import kotlin.math.sqrt
-
-private const val TAG = "KnmiGridParser"
 
 /**
  * Finds the indices of the grid cell closest to the target latitude and longitude.
  *
- * @param ncFile The NetCDF file.
+ * @param netcdfFile The NetCDF file.
  * @param targetLat Target latitude.
  * @param targetLon Target longitude.
- * @param latVarName Name of the latitude coordinate variable (e.g., "latitude").
- * @param lonVarName Name of the longitude coordinate variable (e.g., "longitude").
- * @return Pair of (latitudeIndex, longitudeIndex) or null if not found or error.
+ * @return Pair of (latitudeIndex, longitudeIndex) or null if not found.
  */
 fun findClosestGridPoint(
-    ncFile: NetcdfFile,
+    netcdfFile: NetcdfFile,
     targetLat: Double,
     targetLon: Double,
-    latVarName: String = "latitude", // From your metadata
-    lonVarName: String = "longitude" // From your metadata
 ): Pair<Int, Int>? {
-    val latVar = ncFile.findVariable(latVarName) ?: return null
-    val lonVar = ncFile.findVariable(lonVarName) ?: return null
+    val latitudeVariable = netcdfFile.findVariable(KnmiHarmonieCy43ForecastVariables.LATITUDE.variableName) ?: return null
+    val longitudeVariable = netcdfFile.findVariable(KnmiHarmonieCy43ForecastVariables.LONGITUDE.variableName) ?: return null
 
-    val latArray: Array = latVar.read()
-    val lonArray: Array = lonVar.read()
+    val latitudes: Array = latitudeVariable.read()
+    val longitudes: Array = longitudeVariable.read()
 
-    var closestLatIdx = -1
-    var minLatDiff = Double.MAX_VALUE
-    for (i in 0 until latArray.size.toInt()) {
-        val diff = abs(latArray.getDouble(i) - targetLat)
-        if (diff < minLatDiff) {
-            minLatDiff = diff
-            closestLatIdx = i
+    //TODO: Could potentially use binary search here, but I am not sure if the data is sorted
+
+    // Find the closest latitude point in the grid
+    var closestLatitudeIndex : Int? = null
+    var minimumLatitudeDifference = Double.MAX_VALUE
+    for (i in 0 until latitudes.size.toInt()) {
+        val diff = abs(latitudes.getDouble(i) - targetLat)
+        if (diff < minimumLatitudeDifference) {
+            minimumLatitudeDifference = diff
+            closestLatitudeIndex = i
         }
     }
 
-    var closestLonIdx = -1
-    var minLonDiff = Double.MAX_VALUE
-    // IMPORTANT: Check if longitudes are -180 to 180 or 0 to 360 and handle wrapping if necessary
-    // For now, assuming direct difference works for typical model domains.
-    for (i in 0 until lonArray.size.toInt()) {
-        val diff = abs(lonArray.getDouble(i) - targetLon)
-        if (diff < minLonDiff) {
-            minLonDiff = diff
-            closestLonIdx = i
+    // Find the closest longitude point in the grid
+    var closestLongitudeIndex : Int? = null
+    var minimumLongitudeDifference = Double.MAX_VALUE
+    for (i in 0 until longitudes.size.toInt()) {
+        val diff = abs(longitudes.getDouble(i) - targetLon)
+        if (diff < minimumLongitudeDifference) {
+            minimumLongitudeDifference = diff
+            closestLongitudeIndex = i
         }
     }
 
-    return if (closestLatIdx != -1 && closestLonIdx != -1) {
-        Log.d(TAG, "Closest grid point indices: Lat=$closestLatIdx (Val=${latArray.getDouble(closestLatIdx)}), Lon=$closestLonIdx (Val=${lonArray.getDouble(closestLonIdx)})")
-        Pair(closestLatIdx, closestLonIdx)
-    } else {
-        Log.e(TAG, "Could not find closest grid point for $targetLat, $targetLon")
-        null
-    }
-}
-
-/**
- * Reads gridded data for a specific variable, time index, and grid point.
- * Assumes a 4D variable like var(time, height_level, lat, lon) or 3D if no height_level.
- */
-fun NetcdfFile.readGridDataAtPoint(
-    varName: String,
-    timeIndex: Int,
-    latIndex: Int,
-    lonIndex: Int,
-    // If a dimension for a single height level exists (e.g., temp_at_hagl=1), its index is 0
-    fixedDimensionIndices: Map<String, Int> = emptyMap()
-): Double? {
-    val variable = this.findVariable(varName) ?: return null
-
-    val rank = variable.rank
-    val origin = IntArray(rank)
-    val shape = IntArray(rank) { 1 } // Read a single point
-
-    var timeDimIndex = -1
-    var latDimIndex = -1
-    var lonDimIndex = -1
-
-    val dimensionNames = variable.dimensions.map { it.shortName }
-    Log.d(TAG, "Variable $varName dimensions: $dimensionNames")
-
-
-    for ((idx, dim) in variable.dimensions.withIndex()) {
-        when (dim.shortName) {
-            "time" -> {
-                origin[idx] = timeIndex
-                timeDimIndex = idx
-            }
-            "latitude" -> { // Match your NetCDF variable
-                origin[idx] = latIndex
-                latDimIndex = idx
-            }
-            "longitude" -> { // Match your NetCDF variable
-                origin[idx] = lonIndex
-                lonDimIndex = idx
-            }
-            else -> {
-                // Handle other dimensions, like 'temp_at_hagl' if it's a fixed dimension
-                val fixedIndex = fixedDimensionIndices[dim.shortName]
-                if (fixedIndex != null) {
-                    origin[idx] = fixedIndex
-                    continue
-                }
-                // This dimension is not one we are iterating or fixing,
-                // if its length is > 1, this read will be problematic
-                // For now, assume if not specified, it's length 1 or should be handled
-                if (dim.length > 1) {
-                    Log.w(TAG, "Unhandled dimension ${dim.shortName} with length ${dim.length} in variable $varName. Attempting to use index 0.")
-                    origin[idx] = 0 // Default to 0 if not specified and length > 1 (could be risky)
-                } else {
-                    origin[idx] = 0 // If length is 1, index 0 is fine
-                }
-
-            }
-        }
-    }
-
-    // Validate that required dimensions were found
-    if (timeDimIndex == -1) {
-        Log.e(TAG, "Time dimension not found in variable $varName. Available: ${dimensionNames.joinToString()}")
+    if (closestLatitudeIndex == null || closestLongitudeIndex == null) {
         return null
     }
-    if (latDimIndex == -1 && rank > 2) { // Allow for 1D or 2D time series not on a spatial grid if needed, but temp is spatial
-        Log.e(TAG, "Latitude dimension not found in variable $varName. Available: ${dimensionNames.joinToString()}")
-        return null
-    }
-    if (lonDimIndex == -1 && rank > 2) {
-        Log.e(TAG, "Longitude dimension not found in variable $varName. Available: ${dimensionNames.joinToString()}")
-        return null
-    }
-
-
-    try {
-        val dataArray: Array = variable.read(origin, shape)
-        if (dataArray.size != 1L) {
-            Log.e(TAG, "Read for $varName did not return a single value. Origin: ${origin.joinToString()}, Shape: ${shape.joinToString()}")
-            return null
-        }
-
-        val value = when (variable.dataType) {
-            DataType.FLOAT -> dataArray.getFloat(0).toDouble()
-            DataType.DOUBLE -> dataArray.getDouble(0)
-            DataType.INT -> dataArray.getInt(0).toDouble()
-            DataType.SHORT -> dataArray.getShort(0).toDouble()
-            else -> {
-                Log.w(TAG, "Unsupported data type ${variable.dataType} for $varName")
-                return null
-            }
-        }
-
-        val fillValueAttr = variable.findAttributeIgnoreCase("_FillValue")
-        if (fillValueAttr != null && !fillValueAttr.isString) {
-            val fillValue = fillValueAttr.numericValue
-            if (value == fillValue) {
-                Log.d(TAG, "$varName at point is fill value ($fillValue).")
-                return null
-            }
-        } else if (value.isNaN() && variable.dataType == DataType.FLOAT) { // Check for default NaN float
-            Log.d(TAG, "$varName at point is NaN _FillValue.")
-            return null
-        }
-
-
-        return value
-    } catch (e: Exception) {
-        Log.e(TAG, "Error reading $varName at T:$timeIndex, Lat:$latIndex, Lon:$lonIndex: ${e.message}", e)
-        return null
-    }
+    return Pair(closestLatitudeIndex, closestLongitudeIndex)
 }
 
 
 /**
- * Parses a NetCDF file containing gridded temperature forecast data.
- *
- * @param tempNcFile The NetCDF file for temperature (e.g., uwcw_ha43_nl_2km_air-temperature-hagl_...).
- * @param targetLocation The location for which to extract the forecast.
- * @return List of HourlyWrapper containing temperature data.
+ * Converts a KNMI dataset to a list of HourlyWrappers.
  */
-fun parseKnmiTemperatureForecast(
-    tempNcFile: NetcdfFile,
-    targetLocation: Location
+fun convertKnmiDatasetToHourlyWrapper(
+    dataset: KnmiDataset,
+    targetLocation: Location,
+    knmiApi: KnmiApi
 ): List<HourlyWrapper> {
-    Log.i(TAG, "Parsing KNMI Temperature Forecast from file: ${tempNcFile.location}")
+    val temperatureForecastFile = dataset.files.first { it.filename.contains(KnmiHarmonieCy43ForecastFiles.AIR_TEMPERATURE_HAGL.filename) }
 
-    val (latIdx, lonIdx) = findClosestGridPoint(
-        tempNcFile,
-        targetLocation.latitude,
-        targetLocation.longitude
-    ) ?: run {
-        Log.e(TAG, "Failed to find closest grid point. Aborting temperature parsing.")
-        return emptyList()
-    }
+    val temperatureFileDownloadUrl = knmiApi.getTempDownloadUrlForFile(
+        KNMI_API_KEY,
+        KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName,
+        KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version ,
+        temperatureForecastFile.filename
+    ).blockingFirst()
+    val fileBytes = URL(temperatureFileDownloadUrl.temporaryDownloadUrl).readBytes()
+    val temperatureNetcdfFile = NetcdfFiles.openInMemory(temperatureForecastFile.filename, fileBytes)
 
-    val timeVar = tempNcFile.findVariable("time") ?: run {
-        Log.e(TAG, "'time' coordinate variable not found.")
-        return emptyList()
-    }
-    val timeData: Array = timeVar.read()
-    val numTimePoints = timeData.size.toInt()
-    if (numTimePoints == 0) {
-        Log.w(TAG, "No time points found in 'time' coordinate variable.")
-        return emptyList()
-    }
+    val closestGridPoint: Pair<Int, Int> = findClosestGridPoint(temperatureNetcdfFile, targetLocation.latitude, targetLocation.longitude) ?: return emptyList()
+    val timeVariable: Variable = temperatureNetcdfFile.findVariable(KnmiHarmonieCy43ForecastVariables.TIME.variableName) ?: return emptyList()
 
-    val timeUnits = timeVar.findAttribute("units")?.stringValue
-    if (timeUnits == null) {
-        Log.e(TAG, "Time units attribute not found for 'time' coordinate variable.")
+    val timeVariableData: Array = timeVariable.read()
+    val timePointCount = timeVariableData.size.toInt()
+    if (timePointCount == 0) {
         return emptyList()
     }
-    val calDateUnit = try {
+    val timeUnits = timeVariable.findAttribute("units")?.stringValue ?: return emptyList()
+    val calendarDateUnit = try {
         CalendarDateUnit.of(null, timeUnits)
     } catch (e: Exception) {
-        Log.e(TAG, "Failed to create CalendarDateUnit from timeUnits: '$timeUnits'. Error: ${e.message}", e)
         return emptyList()
     }
-    Log.d(TAG, "Time units: $timeUnits, Number of time points: $numTimePoints")
 
     val hourlyWrappers = mutableListOf<HourlyWrapper>()
 
     // For the air-temperature-hagl variable with dimension temp_at_hagl=1
     // its index will be 0. We pass this information to readGridDataAtPoint.
-    val fixedDimsForTemp = mapOf("temp_at_hagl" to 0)
+    val fixedDimensionsForTemperature: Map<String, Int> = mapOf(KnmiHarmonieCy43ForecastVariables.TEMP_AT_HAGL.variableName to 0)
 
-    for (tIdx in 0 until numTimePoints) {
-        val timeVal = timeData.getDouble(tIdx)
-        val calendarDate: CalendarDate = calDateUnit.makeCalendarDate(timeVal)
-        val date: Date = calendarDate.toDate()
+    for (timeIndex in 0 until timePointCount) {
+        val timeValue = timeVariableData.getDouble(timeIndex)
+        val measurementCalendarDate: CalendarDate = calendarDateUnit.makeCalendarDate(timeValue)
+        val measurementDate: Date = measurementCalendarDate.toDate()
 
-        val tempValue = tempNcFile.readGridDataAtPoint(
-            varName = "air-temperature-hagl", // From your metadata
-            timeIndex = tIdx,
-            latIndex = latIdx,
-            lonIndex = lonIdx,
-            fixedDimensionIndices = fixedDimsForTemp
+        val temperatureNetCdfValue = temperatureNetcdfFile.readGridDataAtPoint(
+            varName = KnmiHarmonieCy43ForecastVariables.AIR_TEMPERATURE_HAGL.variableName,
+            timeIndex = timeIndex,
+            latIndex = closestGridPoint.first,
+            lonIndex = closestGridPoint.second,
+            fixedDimensionIndices = fixedDimensionsForTemperature
         )
-        Log.d(TAG, "Time $date (Epoch val: $timeVal, Index: $tIdx): Raw Temp = $tempValue")
 
+        val temperatureData = temperatureNetCdfValue?.let { Temperature(temperature = it) }
 
-        val temperature = tempValue?.let { Temperature(temperature = it) }
-
-        // In a real scenario, you'd merge this with data from other parameter files
-        // For now, creating HourlyWrapper with only temperature
+        // TODO: implement more features
         hourlyWrappers.add(
             HourlyWrapper(
-                date = date,
-                temperature = temperature,
+                date = measurementDate,
+                temperature = temperatureData,
                 // Initialize other fields to null or default
                 isDaylight = null, // Calculate this later based on lat, lon, date
                 weatherText = null,
@@ -283,6 +145,15 @@ fun parseKnmiTemperatureForecast(
             )
         )
     }
-    Log.i(TAG, "Successfully parsed ${hourlyWrappers.size} temperature data points.")
     return hourlyWrappers
 }
+
+fun debugPrintNetcdfVariables(ncFile: NetcdfFile) {
+    println("================ VARIABLES BELOW ================")
+    println(ncFile.variables)
+    println("================ GLOBAL ATTRIBUTES BELOW ================")
+    print(ncFile.globalAttributes)
+    println("================ END ================")
+}
+
+

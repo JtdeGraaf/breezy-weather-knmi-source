@@ -13,6 +13,7 @@ import org.breezyweather.common.source.HttpSource
 import org.breezyweather.common.source.WeatherSource
 import org.breezyweather.sources.knmi.datasets.KnmiDatasets
 import org.breezyweather.sources.knmi.datasets.harmoniecy43meteorologicalaviationforecastparameters.KnmiHarmonieCy43ForecastFiles
+import org.breezyweather.sources.knmi.json.KnmiDataset
 import retrofit2.Retrofit
 import ucar.nc2.NetcdfFiles
 import java.net.URL
@@ -65,25 +66,16 @@ class KnmiService @Inject constructor(
          */
         //val ncFile: NetcdfFile = NetcdfFiles.open("")
 
-        val dataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.amountOfFiles, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
-        val tempForecastDataset = dataset.files.filter { it.filename.contains(KnmiHarmonieCy43ForecastFiles.AIR_TEMPERATURE_HAGL.filename) }.first()
+        val dataset: KnmiDataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.amountOfFiles, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
 
-        val fileDownloadUrl = mApi.getTempDownloadUrlForFile(KNMI_API_KEY, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version , tempForecastDataset.filename).blockingFirst()
-        val fileBytes = URL(fileDownloadUrl.temporaryDownloadUrl).readBytes()
-        val ncFile = NetcdfFiles.openInMemory(tempForecastDataset.filename, fileBytes)
-        println("================ VARIABLES BELOW ================")
-        println(ncFile.variables)
-        println("================ GLOBAL ATTRIBUTES BELOW ================")
-        print(ncFile.globalAttributes)
-
-        return Observable.just(WeatherWrapper(hourlyForecast = parseKnmiTemperatureForecast(ncFile, location)))
+        return Observable.just(WeatherWrapper(hourlyForecast = convertKnmiDatasetToHourlyWrapper(dataset, location, mApi)))
 
     }
 
     companion object {
         private const val KNMI_BASE_URL = "https://api.dataplatform.knmi.nl"
         // Api key is publicly distributed by KNMI, so it is not secret. Expires on the first of July 2026
-        private const val KNMI_API_KEY = "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6ImVlNDFjMWI0MjlkODQ2MThiNWI4ZDViZDAyMTM2YTM3IiwiaCI6Im11cm11cjEyOCJ9"
+        const val KNMI_API_KEY = "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6ImVlNDFjMWI0MjlkODQ2MThiNWI4ZDViZDAyMTM2YTM3IiwiaCI6Im11cm11cjEyOCJ9"
     }
 
 }
