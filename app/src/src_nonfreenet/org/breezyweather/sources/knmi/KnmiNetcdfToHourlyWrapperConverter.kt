@@ -104,10 +104,6 @@ fun convertKnmiDatasetToHourlyWrapper(
 
     val hourlyWrappers = mutableListOf<HourlyWrapper>()
 
-    // For the air-temperature-hagl variable with dimension temp_at_hagl=1
-    // its index will be 0. We pass this information to readGridDataAtPoint.
-    val fixedDimensionsForTemperature: Map<String, Int> = mapOf(KnmiHarmonieCy43ForecastVariables.TEMP_AT_HAGL.variableName to 0)
-
     for (timeIndex in 0 until timePointCount) {
         val timeValue = timeVariableData.getDouble(timeIndex)
         val measurementCalendarDate: CalendarDate = calendarDateUnit.makeCalendarDate(timeValue)
@@ -118,7 +114,6 @@ fun convertKnmiDatasetToHourlyWrapper(
             timeIndex = timeIndex,
             latIndex = closestGridPoint.first,
             lonIndex = closestGridPoint.second,
-            fixedDimensionIndices = fixedDimensionsForTemperature
         )
 
         val temperatureData = temperatureNetCdfValue?.let { Temperature(temperature = it) }
