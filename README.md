@@ -1,3 +1,10 @@
+# This implementation has been abandoned
+KNMI only provides big datasets which makes it unfeasible to run on a mobile device.
+
+It would be far from ideal to have a user download a 50MB dataset PER refresh for just the temperature forecast alone.
+
+---
+
 <div align="center">
 <br />
 <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" alt="Logo" />
