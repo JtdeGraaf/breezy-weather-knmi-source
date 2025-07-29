@@ -64,7 +64,6 @@ class KnmiService @Inject constructor(
          * 4. Parse file with ucar library
          * 5. Profit?
          */
-        //val ncFile: NetcdfFile = NetcdfFiles.open("")
 
         val dataset: KnmiDataset = mApi.getTenMinuteIntervalDatasets(KNMI_API_KEY,  KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.version, KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.amountOfFiles, "desc", KnmiOrderBy.CREATED.queryParam, null, null).blockingFirst()
 

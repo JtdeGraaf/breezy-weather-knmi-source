@@ -78,6 +78,7 @@ fun convertKnmiDatasetToHourlyWrapper(
 ): List<HourlyWrapper> {
     val temperatureForecastFile = dataset.files.first { it.filename.contains(KnmiHarmonieCy43ForecastFiles.AIR_TEMPERATURE_HAGL.filename) }
 
+    // Use the temperature file as a reference to find the closest grid point
     val temperatureFileDownloadUrl = knmiApi.getTempDownloadUrlForFile(
         KNMI_API_KEY,
         KnmiDatasets.HARMONIE_CY43_METEOROLOGICAL_AVIATION_FORECAST_PARAMETERS.datasetName,
@@ -92,7 +93,7 @@ fun convertKnmiDatasetToHourlyWrapper(
 
     val timeVariableData: Array = timeVariable.read()
     val timePointCount = timeVariableData.size.toInt()
-    if (timePointCount == 0) {
+    if (timePointCount == 0) { // Timepoint should be 24, for 24 hours but might deviate
         return emptyList()
     }
     val timeUnits = timeVariable.findAttribute("units")?.stringValue ?: return emptyList()

@@ -25,6 +25,7 @@ fun NetcdfFile.readGridDataAtPoint(
     var lonDimIndex: Int? = null
 
     for ((idx, dim) in variable.dimensions.withIndex()) {
+        // For now I am just assuming the variables are named universally for KNMI datasets, else add them to the parameters of the function
         when (dim.shortName) {
             "time" -> {
                 origin[idx] = timeIndex
